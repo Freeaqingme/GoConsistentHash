@@ -15,7 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package consistenthash provides an implementation of a ring hash.
+// Package GoConstHash provides an implementation of a ring hash.
 package GoConstHash
 
 import (
@@ -27,12 +27,29 @@ import (
 
 type Hash func(data []byte) uint32
 
+type entry struct {
+	weight int
+	value  EntryValue
+}
+
+type EntryValue interface {
+	HashRingId() string
+}
+
+type StringValue struct {
+	value string
+}
+
+func (e *StringValue) HashRingId() string {
+	return e.value
+}
+
 type Map struct {
 	hash          Hash
 	defaultWeight int
 	keys          []int // Sorted
 	hashMap       map[int]string
-	entries       map[string]int
+	entries       map[string]*entry
 }
 
 func New(defaultWeight int, fn Hash) *Map {
@@ -40,7 +57,7 @@ func New(defaultWeight int, fn Hash) *Map {
 		defaultWeight: defaultWeight,
 		hash:          fn,
 		hashMap:       make(map[int]string),
-		entries:       make(map[string]int),
+		entries:       make(map[string]*entry),
 	}
 	if m.hash == nil {
 		m.hash = crc32.ChecksumIEEE
@@ -53,10 +70,10 @@ func (m *Map) IsEmpty() bool {
 	return len(m.keys) == 0
 }
 
-// Adds some keys to the hash.
-func (m *Map) Add(keys ...string) error {
+// Adds some strings to the hash.
+func (m *Map) AddString(keys ...string) error {
 	for _, key := range keys {
-		if err := m.AddWithWeight(key, m.defaultWeight); err != nil {
+		if err := m.AddStringWithWeight(key, m.defaultWeight); err != nil {
 			return err
 		}
 	}
@@ -64,11 +81,18 @@ func (m *Map) Add(keys ...string) error {
 	return nil
 }
 
-func (m *Map) AddWithWeight(key string, weight int) error {
+// Adds some strings to the hash with a custom weight.
+func (m *Map) AddStringWithWeight(key string, weight int) error {
+	return m.AddWithWeight(&StringValue{key}, weight)
+}
+
+// Adds an item to the hash.
+func (m *Map) AddWithWeight(entryValue EntryValue, weight int) error {
+	key := entryValue.HashRingId()
 	if _, exists := m.entries[key]; exists {
 		return fmt.Errorf("A node with name '%s' already exists", key)
 	}
-	m.entries[key] = weight
+	m.entries[key] = &entry{weight, entryValue}
 
 	for i := 0; i < weight; i++ {
 		hash := int(m.hash([]byte(strconv.Itoa(i) + key)))
@@ -80,12 +104,12 @@ func (m *Map) AddWithWeight(key string, weight int) error {
 }
 
 func (m *Map) Del(key string) error {
-	weight, exists := m.entries[key]
+	entry, exists := m.entries[key]
 	if !exists {
 		return fmt.Errorf("No node with name '%s' found", key)
 	}
 
-	for i := 0; i < weight; i++ {
+	for i := 0; i < entry.weight; i++ {
 		hash := int(m.hash([]byte(strconv.Itoa(i) + key)))
 		delete(m.hashMap, hash)
 

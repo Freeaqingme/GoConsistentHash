@@ -37,7 +37,7 @@ func TestHashing(t *testing.T) {
 
 	// Given the above hash function, this will give replicas with "hashes":
 	// 2, 4, 6, 12, 14, 16, 22, 24, 26
-	hash.Add("6", "4", "2")
+	hash.AddString("6", "4", "2")
 
 	testCases := map[string]string{
 		"2":  "2",
@@ -53,7 +53,7 @@ func TestHashing(t *testing.T) {
 	}
 
 	// Adds 8, 18, 28
-	hash.Add("8")
+	hash.AddString("8")
 
 	// 27 should now map to 8.
 	testCases["27"] = "8"
@@ -80,7 +80,7 @@ func TestGetN(t *testing.T) {
 		t.Errorf("Should not be able to get items from empty ring")
 	}
 
-	hash.Add("6", "1337", "1236", "1723")
+	hash.AddString("6", "1337", "1236", "1723")
 	if res := hash.GetN("1", 0, nil); len(res) > 0 {
 		t.Errorf("Asked for 0 items but got %d items instead", len(res))
 	}
@@ -115,7 +115,7 @@ func TestGetN(t *testing.T) {
 
 func TestGetNWithReplicas(t *testing.T) {
 	hash := New(250, nil)
-	hash.Add("6", "1337", "1236", "1723")
+	hash.AddString("6", "1337", "1236", "1723")
 
 	testCases := map[string][]string{
 		"1338": []string{"6", "1337", "1723"}, // [6 1337 1337 6 1723]
@@ -141,14 +141,14 @@ func TestConsistency(t *testing.T) {
 	hash1 := New(1, nil)
 	hash2 := New(1, nil)
 
-	hash1.Add("Bill", "Bob", "Bonny")
-	hash2.Add("Bob", "Bonny", "Bill")
+	hash1.AddString("Bill", "Bob", "Bonny")
+	hash2.AddString("Bob", "Bonny", "Bill")
 
 	if hash1.Get("Ben") != hash2.Get("Ben") {
 		t.Errorf("Fetching 'Ben' from both hashes should be the same")
 	}
 
-	hash2.Add("Becky", "Ben", "Bobby")
+	hash2.AddString("Becky", "Ben", "Bobby")
 
 	if hash1.Get("Ben") != hash2.Get("Ben") ||
 		hash1.Get("Bob") != hash2.Get("Bob") ||
@@ -160,13 +160,13 @@ func TestConsistency(t *testing.T) {
 
 func TestDeleteFromRing(t *testing.T) {
 	hash := New(3, nil)
-	hash.Add("A", "B", "C")
+	hash.AddString("A", "B", "C")
 
 	if res := hash.Get("132"); res != "B" {
 		t.Errorf("Entry 132 should map to B, but instead got: %s", res)
 	}
 
-	hash.AddWithWeight("D", 2)
+	hash.AddStringWithWeight("D", 2)
 	if len(hash.hashMap) != 11 {
 		t.Errorf("Expected ring to have 11 elements, but it's got: %d", len(hash.hashMap))
 	}
@@ -196,13 +196,13 @@ func TestDeleteFromRing(t *testing.T) {
 	if res := hash.Get("132"); res != "A" {
 		t.Errorf("Entry 132 should map to A, but instead got: %s", res)
 	}
-	hash.Add("B", "C")
+	hash.AddString("B", "C")
 
 	if res := hash.Get("132"); res != "B" {
 		t.Errorf("Entry 132 should map to B, but instead got: %s", res)
 	}
 
-	if err := hash.Add("B", "C"); err == nil {
+	if err := hash.AddString("B", "C"); err == nil {
 		t.Errorf("Expected error, but it wasn't returned")
 	}
 }
@@ -221,7 +221,7 @@ func benchmarkGet(b *testing.B, shards int) {
 		buckets = append(buckets, fmt.Sprintf("shard-%d", i))
 	}
 
-	hash.Add(buckets...)
+	hash.AddString(buckets...)
 
 	b.ResetTimer()
 
