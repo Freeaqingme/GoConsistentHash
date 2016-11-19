@@ -157,6 +157,55 @@ func TestConsistency(t *testing.T) {
 
 }
 
+func TestDeleteFromRing(t *testing.T) {
+	hash := New(3, nil)
+	hash.Add("A", "B", "C")
+
+	if res := hash.Get("132"); res != "B" {
+		t.Errorf("Entry 132 should map to B, but instead got: %s", res)
+	}
+
+	hash.AddWithWeight("D", 2)
+	if len(hash.hashMap) != 11 {
+		t.Errorf("Expected ring to have 11 elements, but it's got: %d", len(hash.hashMap))
+	}
+
+	if res := hash.Get("132"); res != "D" {
+		t.Errorf("Entry 132 should map to D, but instead got: %s", res)
+	}
+
+	hash.Del("D")
+	if err := hash.Del("D"); err == nil {
+		t.Errorf("Expected error, but it wasn't returned")
+	}
+
+	if res := hash.Get("132"); res != "B" {
+		t.Errorf("Entry 132 should map to B, but instead got: %s", res)
+	}
+	hash.Del("C")
+
+	if len(hash.hashMap) != 6 {
+		t.Errorf("Expected ring to have 6 elements, but it's got: %d", len(hash.hashMap))
+	}
+
+	if res := hash.Get("132"); res != "B" {
+		t.Errorf("Entry 132 should map to B, but instead got: %s", res)
+	}
+	hash.Del("B")
+	if res := hash.Get("132"); res != "A" {
+		t.Errorf("Entry 132 should map to A, but instead got: %s", res)
+	}
+	hash.Add("B", "C")
+
+	if res := hash.Get("132"); res != "B" {
+		t.Errorf("Entry 132 should map to B, but instead got: %s", res)
+	}
+
+	if err := hash.Add("B", "C"); err == nil {
+		t.Errorf("Expected error, but it wasn't returned")
+	}
+}
+
 func BenchmarkGet8(b *testing.B)   { benchmarkGet(b, 8) }
 func BenchmarkGet32(b *testing.B)  { benchmarkGet(b, 32) }
 func BenchmarkGet128(b *testing.B) { benchmarkGet(b, 128) }

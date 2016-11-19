@@ -18,6 +18,7 @@ limitations under the License.
 package consistenthash
 
 import (
+	"fmt"
 	"hash/crc32"
 	"sort"
 	"strconv"
@@ -26,17 +27,19 @@ import (
 type Hash func(data []byte) uint32
 
 type Map struct {
-	hash     Hash
-	replicas int
-	keys     []int // Sorted
-	hashMap  map[int]string
+	hash          Hash
+	defaultWeight int
+	keys          []int // Sorted
+	hashMap       map[int]string
+	entries       map[string]int
 }
 
-func New(replicas int, fn Hash) *Map {
+func New(defaultWeight int, fn Hash) *Map {
 	m := &Map{
-		replicas: replicas,
-		hash:     fn,
-		hashMap:  make(map[int]string),
+		defaultWeight: defaultWeight,
+		hash:          fn,
+		hashMap:       make(map[int]string),
+		entries:       make(map[string]int),
 	}
 	if m.hash == nil {
 		m.hash = crc32.ChecksumIEEE
@@ -50,15 +53,51 @@ func (m *Map) IsEmpty() bool {
 }
 
 // Adds some keys to the hash.
-func (m *Map) Add(keys ...string) {
+func (m *Map) Add(keys ...string) error {
 	for _, key := range keys {
-		for i := 0; i < m.replicas; i++ {
-			hash := int(m.hash([]byte(strconv.Itoa(i) + key)))
-			m.keys = append(m.keys, hash)
-			m.hashMap[hash] = key
+		if err := m.AddWithWeight(key, m.defaultWeight); err != nil {
+			return err
 		}
 	}
+
+	return nil
+}
+
+func (m *Map) AddWithWeight(key string, weight int) error {
+	if _, exists := m.entries[key]; exists {
+		return fmt.Errorf("A node with name '%s' already exists", key)
+	}
+	m.entries[key] = weight
+
+	for i := 0; i < weight; i++ {
+		hash := int(m.hash([]byte(strconv.Itoa(i) + key)))
+		m.keys = append(m.keys, hash)
+		m.hashMap[hash] = key
+	}
 	sort.Ints(m.keys)
+	return nil
+}
+
+func (m *Map) Del(key string) error {
+	weight, exists := m.entries[key]
+	if !exists {
+		return fmt.Errorf("No node with name '%s' found", key)
+	}
+
+	for i := 0; i < weight; i++ {
+		hash := int(m.hash([]byte(strconv.Itoa(i) + key)))
+		delete(m.hashMap, hash)
+
+		for k, v := range m.keys {
+			if v == hash {
+				m.keys = append(m.keys[:k], m.keys[k+1:]...)
+			}
+		}
+	}
+
+	sort.Ints(m.keys)
+	delete(m.entries, key)
+	return nil
 }
 
 // Gets the <amount> closest items in the hash to the provided key,
