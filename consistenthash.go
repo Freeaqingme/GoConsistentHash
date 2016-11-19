@@ -1,4 +1,5 @@
 /*
+Copyright 2016 Dolf Schimmel, Freeaqingme
 Copyright 2013 Google Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +16,7 @@ limitations under the License.
 */
 
 // Package consistenthash provides an implementation of a ring hash.
-package consistenthash
+package GoConstHash
 
 import (
 	"fmt"
