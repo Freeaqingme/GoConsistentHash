@@ -15,8 +15,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package GoConstHash provides an implementation of a ring hash.
-package GoConstHash
+// Package GoConsistentHash provides an implementation of a ring hash.
+package GoConsistentHash
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-# GoConstHash
+# GoConsistentHash
 
 ## Summary
 
